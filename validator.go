@@ -1,6 +1,7 @@
 package jsonvalidate
 
 import (
+	"encoding/json"
 	"net/url"
 
 	"github.com/json-validate/json-pointer-go"
@@ -29,6 +30,42 @@ type ValidationError struct {
 	InstancePath jsonpointer.Ptr
 	SchemaPath   jsonpointer.Ptr
 	SchemaURI    url.URL
+}
+
+func (e *ValidationError) UnmarshalJSON(data []byte) error {
+	var strings map[string]string
+	if err := json.Unmarshal(data, &strings); err != nil {
+		return err
+	}
+
+	if val, ok := strings["instancePath"]; ok {
+		ptr, err := jsonpointer.New(val)
+		if err != nil {
+			return err
+		}
+
+		e.InstancePath = ptr
+	}
+
+	if val, ok := strings["schemaPath"]; ok {
+		ptr, err := jsonpointer.New(val)
+		if err != nil {
+			return err
+		}
+
+		e.SchemaPath = ptr
+	}
+
+	if val, ok := strings["schemaURI"]; ok {
+		uri, err := url.Parse(val)
+		if err != nil {
+			return err
+		}
+
+		e.SchemaURI = *uri
+	}
+
+	return nil
 }
 
 func NewValidator(schemas []Schema) (Validator, error) {
