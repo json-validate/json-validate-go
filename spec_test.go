@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSchema(t *testing.T) {
+func TestSpec(t *testing.T) {
 	type testCase struct {
 		Name      string   `json:"name"`
 		Registry  []Schema `json:"registry"`
@@ -53,7 +53,8 @@ func TestSchema(t *testing.T) {
 						validator, err := NewValidator(schemas)
 						assert.NoError(t, err)
 
-						result := validator.Validate(instance.Instance)
+						result, err := validator.Validate(instance.Instance)
+						assert.NoError(t, err)
 						assert.Equal(t, instance.Errors, result.Errors)
 					})
 				}
