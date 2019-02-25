@@ -1,7 +1,6 @@
 package jsonvalidate
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/json-validate/json-pointer-go"
@@ -123,7 +122,6 @@ func (vm *vm) popSchema() {
 }
 
 func (vm *vm) pushSchemaToken(t string) {
-	fmt.Println("push schema", vm.schemas)
 	stack := &vm.schemas[len(vm.schemas)-1]
 	stack.tokens = append(stack.tokens, t)
 }

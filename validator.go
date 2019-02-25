@@ -2,7 +2,6 @@ package jsonvalidate
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/url"
 
 	"github.com/json-validate/json-pointer-go"
@@ -205,7 +204,6 @@ func (v Validator) ValidateURI(uri url.URL, instance interface{}) (ValidationRes
 		errors: []ValidationError{},
 	}
 
-	fmt.Println("vm schemas", vm.schemas)
 	if err := vm.eval(schema, instance); err != nil {
 		if err != errMaxErrors {
 			return ValidationResult{}, err
