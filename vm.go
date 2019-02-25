@@ -2,6 +2,7 @@ package jsonvalidate
 
 import (
 	"net/url"
+	"strconv"
 
 	"github.com/json-validate/json-pointer-go"
 )
@@ -21,10 +22,20 @@ type schemaStack struct {
 }
 
 func (vm *vm) eval(schema *Schema, instance interface{}) error {
-	switch instance.(type) {
+	checkArray := schema.Elements != nil
+
+	switch instanceVal := instance.(type) {
 	case nil:
 		if schema.Type != nil && *schema.Type != "null" {
 			vm.pushSchemaToken("type")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkArray {
+			vm.pushSchemaToken("elements")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -38,9 +49,25 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			}
 			vm.popSchemaToken()
 		}
+
+		if checkArray {
+			vm.pushSchemaToken("elements")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
 	case float64:
 		if schema.Type != nil && *schema.Type != "number" {
 			vm.pushSchemaToken("type")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkArray {
+			vm.pushSchemaToken("elements")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -54,6 +81,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			}
 			vm.popSchemaToken()
 		}
+
+		if checkArray {
+			vm.pushSchemaToken("elements")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
 	case []interface{}:
 		if schema.Type != nil {
 			vm.pushSchemaToken("type")
@@ -62,9 +97,27 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			}
 			vm.popSchemaToken()
 		}
+
+		vm.pushSchemaToken("elements")
+		for i, elem := range instanceVal {
+			vm.pushInstanceToken(strconv.Itoa(i))
+			if err := vm.eval(schema.Elements, elem); err != nil {
+				return err
+			}
+			vm.popInstanceToken()
+		}
+		vm.popSchemaToken()
 	case map[string]interface{}:
 		if schema.Type != nil {
 			vm.pushSchemaToken("type")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkArray {
+			vm.pushSchemaToken("elements")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
