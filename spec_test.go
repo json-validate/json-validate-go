@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"testing"
 
@@ -55,6 +56,29 @@ func TestSpec(t *testing.T) {
 
 						result, err := validator.Validate(instance.Instance)
 						assert.NoError(t, err)
+
+						sort.Slice(instance.Errors, func(i, j int) bool {
+							a := instance.Errors[i]
+							b := instance.Errors[j]
+
+							if a.SchemaPath.String() == b.SchemaPath.String() {
+								return a.InstancePath.String() < b.InstancePath.String()
+							}
+
+							return a.SchemaPath.String() < b.SchemaPath.String()
+						})
+
+						sort.Slice(result.Errors, func(i, j int) bool {
+							a := result.Errors[i]
+							b := result.Errors[j]
+
+							if a.SchemaPath.String() == b.SchemaPath.String() {
+								return a.InstancePath.String() < b.InstancePath.String()
+							}
+
+							return a.SchemaPath.String() < b.SchemaPath.String()
+						})
+
 						assert.Equal(t, instance.Errors, result.Errors)
 					})
 				}

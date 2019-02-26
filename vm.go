@@ -22,7 +22,8 @@ type schemaStack struct {
 }
 
 func (vm *vm) eval(schema *Schema, instance interface{}) error {
-	checkArray := schema.Elements != nil
+	checkElements := schema.Elements != nil
+	checkProperties := schema.Properties != nil
 
 	switch instanceVal := instance.(type) {
 	case nil:
@@ -34,8 +35,16 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			vm.popSchemaToken()
 		}
 
-		if checkArray {
+		if checkElements {
 			vm.pushSchemaToken("elements")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkProperties {
+			vm.pushSchemaToken("properties")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -50,8 +59,16 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			vm.popSchemaToken()
 		}
 
-		if checkArray {
+		if checkElements {
 			vm.pushSchemaToken("elements")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkProperties {
+			vm.pushSchemaToken("properties")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -66,8 +83,16 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			vm.popSchemaToken()
 		}
 
-		if checkArray {
+		if checkElements {
 			vm.pushSchemaToken("elements")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkProperties {
+			vm.pushSchemaToken("properties")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -82,8 +107,16 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			vm.popSchemaToken()
 		}
 
-		if checkArray {
+		if checkElements {
 			vm.pushSchemaToken("elements")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkProperties {
+			vm.pushSchemaToken("properties")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -92,6 +125,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 	case []interface{}:
 		if schema.Type != nil {
 			vm.pushSchemaToken("type")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkProperties {
+			vm.pushSchemaToken("properties")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -116,10 +157,30 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			vm.popSchemaToken()
 		}
 
-		if checkArray {
+		if checkElements {
 			vm.pushSchemaToken("elements")
 			if err := vm.reportError(); err != nil {
 				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkProperties {
+			vm.pushSchemaToken("properties")
+			for key, subSchema := range schema.Properties {
+				vm.pushSchemaToken(key)
+
+				if value, ok := instanceVal[key]; ok {
+					vm.pushInstanceToken(key)
+					vm.eval(subSchema, value)
+					vm.popInstanceToken()
+				} else {
+					if err := vm.reportError(); err != nil {
+						return err
+					}
+				}
+
+				vm.popSchemaToken()
 			}
 			vm.popSchemaToken()
 		}
