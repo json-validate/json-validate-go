@@ -11,14 +11,14 @@ type Schema struct {
 	Properties         map[string]*Schema `json:"properties"`
 	OptionalProperties map[string]*Schema `json:"optionalProperties"`
 	Values             *Schema            `json:"values"`
-	Disciminator       *Disciminator      `json:"discriminator"`
+	Discriminator      *Discriminator     `json:"discriminator"`
 	AnyOf              []*Schema          `json:"anyOf"`
 
 	baseURI url.URL
 	refURI  url.URL
 }
 
-type Disciminator struct {
+type Discriminator struct {
 	PropertyName string             `json:"propertyName"`
 	Mapping      map[string]*Schema `json:"mapping"`
 }

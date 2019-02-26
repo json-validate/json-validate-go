@@ -176,8 +176,8 @@ func populateRefs(missingURIs *[]url.URL, registry map[url.URL]*Schema, baseURI 
 		return err
 	}
 
-	if schema.Disciminator != nil {
-		for _, val := range schema.Disciminator.Mapping {
+	if schema.Discriminator != nil {
+		for _, val := range schema.Discriminator.Mapping {
 			if err := populateRefs(missingURIs, registry, baseURI, val); err != nil {
 				return err
 			}

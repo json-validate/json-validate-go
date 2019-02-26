@@ -1,7 +1,6 @@
 package jsonvalidate
 
 import (
-	"fmt"
 	"net/url"
 	"strconv"
 
@@ -46,7 +45,7 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 	checkProperties := schema.Properties != nil
 	checkOptionalProperties := schema.OptionalProperties != nil
 	checkValues := schema.Values != nil
-	checkDiscriminator := schema.Disciminator != nil
+	checkDiscriminator := schema.Discriminator != nil
 
 	switch instanceVal := instance.(type) {
 	case nil:
@@ -373,10 +372,9 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 		if checkDiscriminator {
 			vm.pushSchemaToken("discriminator")
 
-			fmt.Println("validating discriminator", schema.Disciminator)
-			if tag, ok := instanceVal[schema.Disciminator.PropertyName]; ok {
+			if tag, ok := instanceVal[schema.Discriminator.PropertyName]; ok {
 				if tagStr, ok := tag.(string); ok {
-					if subSchema, ok := schema.Disciminator.Mapping[tagStr]; ok {
+					if subSchema, ok := schema.Discriminator.Mapping[tagStr]; ok {
 						vm.pushSchemaToken("mapping")
 						vm.pushSchemaToken(tagStr)
 						if err := vm.eval(subSchema, instanceVal); err != nil {
@@ -386,7 +384,7 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 						vm.popSchemaToken()
 					} else {
 						vm.pushSchemaToken("mapping")
-						vm.pushInstanceToken(schema.Disciminator.PropertyName)
+						vm.pushInstanceToken(schema.Discriminator.PropertyName)
 						if err := vm.reportError(); err != nil {
 							return err
 						}
@@ -395,7 +393,7 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 					}
 				} else {
 					vm.pushSchemaToken("propertyName")
-					vm.pushInstanceToken(schema.Disciminator.PropertyName)
+					vm.pushInstanceToken(schema.Discriminator.PropertyName)
 					if err := vm.reportError(); err != nil {
 						return err
 					}
