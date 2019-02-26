@@ -23,6 +23,25 @@ type schemaStack struct {
 }
 
 func (vm *vm) eval(schema *Schema, instance interface{}) error {
+	if schema.Ref != nil {
+		refSchema := vm.registry[schema.refURI]
+		tokens := []string{}
+
+		if schema.refURI.Fragment != "" {
+			tokens = []string{"definitions", schema.refURI.Fragment}
+		}
+
+		if err := vm.pushSchema(refSchema.baseURI, tokens); err != nil {
+			return err
+		}
+
+		if err := vm.eval(refSchema, instance); err != nil {
+			return err
+		}
+
+		vm.popSchema()
+	}
+
 	checkElements := schema.Elements != nil
 	checkProperties := schema.Properties != nil
 	checkOptionalProperties := schema.OptionalProperties != nil

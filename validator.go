@@ -74,11 +74,11 @@ func NewValidator(schemas []Schema) (Validator, error) {
 
 func NewValidatorWithConfig(config ValidatorConfig, schemas []Schema) (Validator, error) {
 	registry := map[url.URL]*Schema{}
-	for _, schema := range schemas {
+	for i, schema := range schemas {
 		var uri url.URL
 
-		if schema.Base != nil {
-			parsedURI, err := url.Parse(*schema.Base)
+		if schema.ID != nil {
+			parsedURI, err := url.Parse(*schema.ID)
 			if err != nil {
 				return Validator{}, err
 			}
@@ -86,8 +86,15 @@ func NewValidatorWithConfig(config ValidatorConfig, schemas []Schema) (Validator
 			uri = *parsedURI
 		}
 
-		schema.baseURI = uri
-		registry[uri] = &schema
+		schemas[i].baseURI = uri
+		registry[uri] = &schemas[i]
+
+		for name, def := range schema.Definitions {
+			defURI := uri
+			defURI.Fragment = name
+
+			registry[defURI] = def
+		}
 	}
 
 	missingURIs := []url.URL{}
@@ -113,6 +120,8 @@ func populateRefs(missingURIs *[]url.URL, registry map[url.URL]*Schema, baseURI 
 		return nil
 	}
 
+	schema.baseURI = *baseURI
+
 	// First, populate the ref on this schema, if any
 	if schema.Ref != nil {
 		refURI, err := baseURI.Parse(*schema.Ref)
@@ -126,7 +135,11 @@ func populateRefs(missingURIs *[]url.URL, registry map[url.URL]*Schema, baseURI 
 		refBaseURI.Fragment = ""
 
 		if refSchema, ok := registry[refBaseURI]; ok {
-			_, refOk = refSchema.Definitions[refURI.Fragment]
+			if refURI.Fragment == "" {
+				refOk = true
+			} else {
+				_, refOk = refSchema.Definitions[refURI.Fragment]
+			}
 		}
 
 		if refOk {
