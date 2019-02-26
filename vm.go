@@ -24,6 +24,7 @@ type schemaStack struct {
 func (vm *vm) eval(schema *Schema, instance interface{}) error {
 	checkElements := schema.Elements != nil
 	checkProperties := schema.Properties != nil
+	checkOptionalProperties := schema.OptionalProperties != nil
 
 	switch instanceVal := instance.(type) {
 	case nil:
@@ -45,6 +46,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 		if checkProperties {
 			vm.pushSchemaToken("properties")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkOptionalProperties {
+			vm.pushSchemaToken("optionalProperties")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -74,6 +83,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			}
 			vm.popSchemaToken()
 		}
+
+		if checkOptionalProperties {
+			vm.pushSchemaToken("optionalProperties")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
 	case float64:
 		if schema.Type != nil && *schema.Type != "number" {
 			vm.pushSchemaToken("type")
@@ -93,6 +110,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 		if checkProperties {
 			vm.pushSchemaToken("properties")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkOptionalProperties {
+			vm.pushSchemaToken("optionalProperties")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -122,6 +147,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			}
 			vm.popSchemaToken()
 		}
+
+		if checkOptionalProperties {
+			vm.pushSchemaToken("optionalProperties")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
 	case []interface{}:
 		if schema.Type != nil {
 			vm.pushSchemaToken("type")
@@ -133,6 +166,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 		if checkProperties {
 			vm.pushSchemaToken("properties")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkOptionalProperties {
+			vm.pushSchemaToken("optionalProperties")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -167,6 +208,7 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 		if checkProperties {
 			vm.pushSchemaToken("properties")
+
 			for key, subSchema := range schema.Properties {
 				vm.pushSchemaToken(key)
 
@@ -182,6 +224,25 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 				vm.popSchemaToken()
 			}
+
+			vm.popSchemaToken()
+		}
+
+		if checkOptionalProperties {
+			vm.pushSchemaToken("optionalProperties")
+
+			for key, subSchema := range schema.OptionalProperties {
+				vm.pushSchemaToken(key)
+
+				if value, ok := instanceVal[key]; ok {
+					vm.pushInstanceToken(key)
+					vm.eval(subSchema, value)
+					vm.popInstanceToken()
+				}
+
+				vm.popSchemaToken()
+			}
+
 			vm.popSchemaToken()
 		}
 	}
