@@ -1,6 +1,7 @@
 package jsonvalidate
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 
@@ -26,6 +27,7 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 	checkProperties := schema.Properties != nil
 	checkOptionalProperties := schema.OptionalProperties != nil
 	checkValues := schema.Values != nil
+	checkDiscriminator := schema.Disciminator != nil
 
 	switch instanceVal := instance.(type) {
 	case nil:
@@ -63,6 +65,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 		if checkValues {
 			vm.pushSchemaToken("values")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkDiscriminator {
+			vm.pushSchemaToken("discriminator")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -108,6 +118,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			}
 			vm.popSchemaToken()
 		}
+
+		if checkDiscriminator {
+			vm.pushSchemaToken("discriminator")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
 	case float64:
 		if schema.Type != nil && *schema.Type != "number" {
 			vm.pushSchemaToken("type")
@@ -143,6 +161,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 		if checkValues {
 			vm.pushSchemaToken("values")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
+
+		if checkDiscriminator {
+			vm.pushSchemaToken("discriminator")
 			if err := vm.reportError(); err != nil {
 				return err
 			}
@@ -188,6 +214,14 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			}
 			vm.popSchemaToken()
 		}
+
+		if checkDiscriminator {
+			vm.pushSchemaToken("discriminator")
+			if err := vm.reportError(); err != nil {
+				return err
+			}
+			vm.popSchemaToken()
+		}
 	case []interface{}:
 		if schema.Type != nil {
 			vm.pushSchemaToken("type")
@@ -221,15 +255,27 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 			vm.popSchemaToken()
 		}
 
-		vm.pushSchemaToken("elements")
-		for i, elem := range instanceVal {
-			vm.pushInstanceToken(strconv.Itoa(i))
-			if err := vm.eval(schema.Elements, elem); err != nil {
+		if checkDiscriminator {
+			vm.pushSchemaToken("discriminator")
+			if err := vm.reportError(); err != nil {
 				return err
 			}
-			vm.popInstanceToken()
+			vm.popSchemaToken()
 		}
-		vm.popSchemaToken()
+
+		if checkElements {
+			vm.pushSchemaToken("elements")
+
+			for i, elem := range instanceVal {
+				vm.pushInstanceToken(strconv.Itoa(i))
+				if err := vm.eval(schema.Elements, elem); err != nil {
+					return err
+				}
+				vm.popInstanceToken()
+			}
+
+			vm.popSchemaToken()
+		}
 	case map[string]interface{}:
 		if schema.Type != nil {
 			vm.pushSchemaToken("type")
@@ -255,7 +301,9 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 				if value, ok := instanceVal[key]; ok {
 					vm.pushInstanceToken(key)
-					vm.eval(subSchema, value)
+					if err := vm.eval(subSchema, value); err != nil {
+						return err
+					}
 					vm.popInstanceToken()
 				} else {
 					if err := vm.reportError(); err != nil {
@@ -277,7 +325,9 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 				if value, ok := instanceVal[key]; ok {
 					vm.pushInstanceToken(key)
-					vm.eval(subSchema, value)
+					if err := vm.eval(subSchema, value); err != nil {
+						return err
+					}
 					vm.popInstanceToken()
 				}
 
@@ -292,8 +342,53 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 			for key, value := range instanceVal {
 				vm.pushInstanceToken(key)
-				vm.eval(schema.Values, value)
+				if err := vm.eval(schema.Values, value); err != nil {
+					return err
+				}
 				vm.popInstanceToken()
+			}
+
+			vm.popSchemaToken()
+		}
+
+		if checkDiscriminator {
+			vm.pushSchemaToken("discriminator")
+
+			fmt.Println("validating discriminator", schema.Disciminator)
+			if tag, ok := instanceVal[schema.Disciminator.PropertyName]; ok {
+				if tagStr, ok := tag.(string); ok {
+					if subSchema, ok := schema.Disciminator.Mapping[tagStr]; ok {
+						vm.pushSchemaToken("mapping")
+						vm.pushSchemaToken(tagStr)
+						if err := vm.eval(subSchema, instanceVal); err != nil {
+							return err
+						}
+						vm.popSchemaToken()
+						vm.popSchemaToken()
+					} else {
+						vm.pushSchemaToken("mapping")
+						vm.pushInstanceToken(schema.Disciminator.PropertyName)
+						if err := vm.reportError(); err != nil {
+							return err
+						}
+						vm.popInstanceToken()
+						vm.popSchemaToken()
+					}
+				} else {
+					vm.pushSchemaToken("propertyName")
+					vm.pushInstanceToken(schema.Disciminator.PropertyName)
+					if err := vm.reportError(); err != nil {
+						return err
+					}
+					vm.popInstanceToken()
+					vm.popSchemaToken()
+				}
+			} else {
+				vm.pushSchemaToken("propertyName")
+				if err := vm.reportError(); err != nil {
+					return err
+				}
+				vm.popSchemaToken()
 			}
 
 			vm.popSchemaToken()

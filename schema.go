@@ -20,5 +20,5 @@ type Schema struct {
 
 type Disciminator struct {
 	PropertyName string             `json:"propertyName"`
-	Mappings     map[string]*Schema `json:"mappings"`
+	Mapping      map[string]*Schema `json:"mapping"`
 }
