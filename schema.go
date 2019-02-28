@@ -5,8 +5,7 @@ import (
 	"net/url"
 )
 
-// SchemaStruct is a JSON- and YAML-friendly representation of a JSON Validate
-// schema.
+// SchemaStruct is a JSON-friendly representation of a JSON Validate schema.
 //
 // Just because data is a SchemaStruct, doesn't mean it's a valid JSON Validate
 // schema. For example, some keywords of JSON Schema aren't allowed to be used
