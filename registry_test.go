@@ -13,6 +13,7 @@ import (
 func TestNewRegistry(t *testing.T) {
 	badURI := "::"
 	emptyURI := ""
+	typeNull := "null"
 
 	testCases := []struct {
 		in  []SchemaStruct
@@ -224,11 +225,72 @@ func TestNewRegistry(t *testing.T) {
 		{
 			[]SchemaStruct{
 				SchemaStruct{
+					Definitions: &map[string]SchemaStruct{
+						"a": SchemaStruct{
+							ID: &emptyURI,
+						},
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Elements: &SchemaStruct{
+						Definitions: &map[string]SchemaStruct{},
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Properties: &map[string]SchemaStruct{
+						"a": SchemaStruct{
+							Definitions: &map[string]SchemaStruct{},
+						},
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					OptionalProperties: &map[string]SchemaStruct{
+						"a": SchemaStruct{
+							Definitions: &map[string]SchemaStruct{},
+						},
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Values: &SchemaStruct{
+						Definitions: &map[string]SchemaStruct{},
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
 					Discriminator: &SchemaStructDiscriminator{
 						PropertyName: "::",
 						Mapping: map[string]SchemaStruct{
 							"a": SchemaStruct{
-								ID: &emptyURI,
+								Definitions: &map[string]SchemaStruct{},
 							},
 						},
 					},
@@ -236,6 +298,58 @@ func TestNewRegistry(t *testing.T) {
 			},
 			Registry{},
 			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Ref:  &emptyURI,
+					Type: &typeNull,
+				},
+			},
+			Registry{},
+			ErrBadSchemaKind,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Type:     &typeNull,
+					Elements: &SchemaStruct{},
+				},
+			},
+			Registry{},
+			ErrBadSchemaKind,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Elements:           &SchemaStruct{},
+					Properties:         &map[string]SchemaStruct{},
+					OptionalProperties: &map[string]SchemaStruct{},
+				},
+			},
+			Registry{},
+			ErrBadSchemaKind,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Properties:         &map[string]SchemaStruct{},
+					OptionalProperties: &map[string]SchemaStruct{},
+					Values:             &SchemaStruct{},
+				},
+			},
+			Registry{},
+			ErrBadSchemaKind,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Values:        &SchemaStruct{},
+					Discriminator: &SchemaStructDiscriminator{},
+				},
+			},
+			Registry{},
+			ErrBadSchemaKind,
 		},
 	}
 

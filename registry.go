@@ -48,16 +48,11 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 		out.ID = id
 	}
 
-	if s.Ref != nil {
-		ref, err := url.Parse(*s.Ref)
-		if err != nil {
-			return Schema{}, err
+	if s.Definitions != nil {
+		if !root {
+			return Schema{}, ErrBadSubSchema
 		}
 
-		out.Ref = ref
-	}
-
-	if s.Definitions != nil {
 		out.Definitions = make(map[string]*Schema, len(*s.Definitions))
 		for k, v := range *s.Definitions {
 			schema, err := parseSchemaStruct(false, v)
@@ -69,7 +64,30 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 		}
 	}
 
+	out.Kind = SchemaKindEmpty
+
+	if s.Ref != nil {
+		if out.Kind == SchemaKindEmpty {
+			out.Kind = SchemaKindRef
+		} else {
+			return Schema{}, ErrBadSchemaKind
+		}
+
+		ref, err := url.Parse(*s.Ref)
+		if err != nil {
+			return Schema{}, err
+		}
+
+		out.Ref = ref
+	}
+
 	if s.Type != nil {
+		if out.Kind == SchemaKindEmpty {
+			out.Kind = SchemaKindType
+		} else {
+			return Schema{}, ErrBadSchemaKind
+		}
+
 		switch *s.Type {
 		case "null":
 			out.Type = SchemaTypeNull
@@ -85,6 +103,12 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 	}
 
 	if s.Elements != nil {
+		if out.Kind == SchemaKindEmpty {
+			out.Kind = SchemaKindElements
+		} else {
+			return Schema{}, ErrBadSchemaKind
+		}
+
 		schema, err := parseSchemaStruct(false, *s.Elements)
 		if err != nil {
 			return Schema{}, errors.Wrap(err, "error parsing elements")
@@ -94,6 +118,12 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 	}
 
 	if s.Properties != nil {
+		if out.Kind == SchemaKindEmpty {
+			out.Kind = SchemaKindProperties
+		} else {
+			return Schema{}, ErrBadSchemaKind
+		}
+
 		out.Properties = make(map[string]*Schema, len(*s.Properties))
 		for k, v := range *s.Properties {
 			schema, err := parseSchemaStruct(false, v)
@@ -106,6 +136,12 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 	}
 
 	if s.OptionalProperties != nil {
+		if out.Kind == SchemaKindEmpty || out.Kind == SchemaKindProperties {
+			out.Kind = SchemaKindProperties
+		} else {
+			return Schema{}, ErrBadSchemaKind
+		}
+
 		out.OptionalProperties = make(map[string]*Schema, len(*s.OptionalProperties))
 		for k, v := range *s.OptionalProperties {
 			schema, err := parseSchemaStruct(false, v)
@@ -118,6 +154,12 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 	}
 
 	if s.Values != nil {
+		if out.Kind == SchemaKindEmpty {
+			out.Kind = SchemaKindValues
+		} else {
+			return Schema{}, ErrBadSchemaKind
+		}
+
 		schema, err := parseSchemaStruct(false, *s.Values)
 		if err != nil {
 			return Schema{}, errors.Wrap(err, "error parsing values")
@@ -127,6 +169,12 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 	}
 
 	if s.Discriminator != nil {
+		if out.Kind == SchemaKindEmpty {
+			out.Kind = SchemaKindDiscriminator
+		} else {
+			return Schema{}, ErrBadSchemaKind
+		}
+
 		out.DiscriminatorPropertyName = s.Discriminator.PropertyName
 		out.DiscriminatorMapping = make(map[string]*Schema, len(s.Discriminator.Mapping))
 		for k, v := range s.Discriminator.Mapping {
