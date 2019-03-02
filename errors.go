@@ -6,6 +6,8 @@ import (
 	"net/url"
 )
 
+var ErrBadSubSchema = errors.New("invalid sub-schema")
+
 var ErrMaxDepth = errors.New("max recursion depth reached during validation")
 var errMaxErrors = errors.New("max errors reached")
 

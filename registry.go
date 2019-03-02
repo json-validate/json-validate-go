@@ -21,7 +21,7 @@ type Registry struct {
 func NewRegistry(schemaStructs []SchemaStruct) (Registry, error) {
 	schemas := []Schema{}
 	for i, schema := range schemaStructs {
-		s, err := parseSchemaStruct(schema)
+		s, err := parseSchemaStruct(true, schema)
 		if err != nil {
 			return Registry{}, errors.Wrapf(err, "error parsing schema at index %d", i)
 		}
@@ -32,10 +32,14 @@ func NewRegistry(schemaStructs []SchemaStruct) (Registry, error) {
 	return Registry{Schemas: schemas}, nil
 }
 
-func parseSchemaStruct(s SchemaStruct) (Schema, error) {
+func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 	out := Schema{}
 
 	if s.ID != nil {
+		if !root {
+			return Schema{}, ErrBadSubSchema
+		}
+
 		id, err := url.Parse(*s.ID)
 		if err != nil {
 			return Schema{}, err
@@ -56,7 +60,7 @@ func parseSchemaStruct(s SchemaStruct) (Schema, error) {
 	if s.Definitions != nil {
 		out.Definitions = make(map[string]*Schema, len(*s.Definitions))
 		for k, v := range *s.Definitions {
-			schema, err := parseSchemaStruct(v)
+			schema, err := parseSchemaStruct(false, v)
 			if err != nil {
 				return Schema{}, errors.Wrapf(err, "error parsing definition %s", k)
 			}
@@ -81,7 +85,7 @@ func parseSchemaStruct(s SchemaStruct) (Schema, error) {
 	}
 
 	if s.Elements != nil {
-		schema, err := parseSchemaStruct(*s.Elements)
+		schema, err := parseSchemaStruct(false, *s.Elements)
 		if err != nil {
 			return Schema{}, errors.Wrap(err, "error parsing elements")
 		}
@@ -92,7 +96,7 @@ func parseSchemaStruct(s SchemaStruct) (Schema, error) {
 	if s.Properties != nil {
 		out.Properties = make(map[string]*Schema, len(*s.Properties))
 		for k, v := range *s.Properties {
-			schema, err := parseSchemaStruct(v)
+			schema, err := parseSchemaStruct(false, v)
 			if err != nil {
 				return Schema{}, errors.Wrapf(err, "error parsing properties %s", k)
 			}
@@ -104,7 +108,7 @@ func parseSchemaStruct(s SchemaStruct) (Schema, error) {
 	if s.OptionalProperties != nil {
 		out.OptionalProperties = make(map[string]*Schema, len(*s.OptionalProperties))
 		for k, v := range *s.OptionalProperties {
-			schema, err := parseSchemaStruct(v)
+			schema, err := parseSchemaStruct(false, v)
 			if err != nil {
 				return Schema{}, errors.Wrapf(err, "error parsing optionalProperties %s", k)
 			}
@@ -114,7 +118,7 @@ func parseSchemaStruct(s SchemaStruct) (Schema, error) {
 	}
 
 	if s.Values != nil {
-		schema, err := parseSchemaStruct(*s.Values)
+		schema, err := parseSchemaStruct(false, *s.Values)
 		if err != nil {
 			return Schema{}, errors.Wrap(err, "error parsing values")
 		}
@@ -126,7 +130,7 @@ func parseSchemaStruct(s SchemaStruct) (Schema, error) {
 		out.DiscriminatorPropertyName = s.Discriminator.PropertyName
 		out.DiscriminatorMapping = make(map[string]*Schema, len(s.Discriminator.Mapping))
 		for k, v := range s.Discriminator.Mapping {
-			schema, err := parseSchemaStruct(v)
+			schema, err := parseSchemaStruct(false, v)
 			if err != nil {
 				return Schema{}, errors.Wrapf(err, "error parsing mapping %s", k)
 			}

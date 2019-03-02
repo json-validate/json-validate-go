@@ -12,6 +12,7 @@ import (
 
 func TestNewRegistry(t *testing.T) {
 	badURI := "::"
+	emptyURI := ""
 
 	testCases := []struct {
 		in  []SchemaStruct
@@ -54,7 +55,7 @@ func TestNewRegistry(t *testing.T) {
 				SchemaStruct{
 					Definitions: &map[string]SchemaStruct{
 						"a": SchemaStruct{
-							ID: &badURI,
+							Ref: &badURI,
 						},
 					},
 				},
@@ -79,7 +80,7 @@ func TestNewRegistry(t *testing.T) {
 			[]SchemaStruct{
 				SchemaStruct{
 					Elements: &SchemaStruct{
-						ID: &badURI,
+						Ref: &badURI,
 					},
 				},
 			},
@@ -95,7 +96,7 @@ func TestNewRegistry(t *testing.T) {
 				SchemaStruct{
 					Properties: &map[string]SchemaStruct{
 						"a": SchemaStruct{
-							ID: &badURI,
+							Ref: &badURI,
 						},
 					},
 				},
@@ -112,7 +113,7 @@ func TestNewRegistry(t *testing.T) {
 				SchemaStruct{
 					OptionalProperties: &map[string]SchemaStruct{
 						"a": SchemaStruct{
-							ID: &badURI,
+							Ref: &badURI,
 						},
 					},
 				},
@@ -128,7 +129,7 @@ func TestNewRegistry(t *testing.T) {
 			[]SchemaStruct{
 				SchemaStruct{
 					Values: &SchemaStruct{
-						ID: &badURI,
+						Ref: &badURI,
 					},
 				},
 			},
@@ -146,7 +147,7 @@ func TestNewRegistry(t *testing.T) {
 						PropertyName: "::",
 						Mapping: map[string]SchemaStruct{
 							"a": SchemaStruct{
-								ID: &badURI,
+								Ref: &badURI,
 							},
 						},
 					},
@@ -158,6 +159,83 @@ func TestNewRegistry(t *testing.T) {
 				URL: "::",
 				Err: e.New("missing protocol scheme"),
 			},
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Definitions: &map[string]SchemaStruct{
+						"a": SchemaStruct{
+							ID: &emptyURI,
+						},
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Elements: &SchemaStruct{
+						ID: &emptyURI,
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Properties: &map[string]SchemaStruct{
+						"a": SchemaStruct{
+							ID: &emptyURI,
+						},
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					OptionalProperties: &map[string]SchemaStruct{
+						"a": SchemaStruct{
+							ID: &emptyURI,
+						},
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Values: &SchemaStruct{
+						ID: &emptyURI,
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
+		},
+		{
+			[]SchemaStruct{
+				SchemaStruct{
+					Discriminator: &SchemaStructDiscriminator{
+						PropertyName: "::",
+						Mapping: map[string]SchemaStruct{
+							"a": SchemaStruct{
+								ID: &emptyURI,
+							},
+						},
+					},
+				},
+			},
+			Registry{},
+			ErrBadSubSchema,
 		},
 	}
 
