@@ -9,7 +9,7 @@ import (
 
 // Registry is a collection of schemas which may refer to each other.
 type Registry struct {
-	Schemas []Schema
+	Schemas map[url.URL]*Schema
 }
 
 // NewRegistry constructs a new registry from a set of schemas.
@@ -19,14 +19,26 @@ type Registry struct {
 // create new pointers into the registry's schemas, then discarding the registry
 // will allow all of the contained schemas to be garbage collected.
 func NewRegistry(schemaStructs []SchemaStruct) (Registry, error) {
-	schemas := []Schema{}
+	// In a first pass, ensure that all schemas are structurally valid.
+	schemas := map[url.URL]*Schema{}
 	for i, schema := range schemaStructs {
 		s, err := parseSchemaStruct(true, schema)
 		if err != nil {
 			return Registry{}, errors.Wrapf(err, "error parsing schema at index %d", i)
 		}
 
-		schemas = append(schemas, s)
+		schemas[*s.ID] = &s
+	}
+
+	// In a second pass, ensure that all references are valid, and compute their
+	// resolutions.
+	missingURIs := []url.URL{}
+	for id, schema := range schemas {
+		populateSchemaRefs(&missingURIs, schemas, &id, schema)
+	}
+
+	if len(missingURIs) > 0 {
+		return Registry{}, ErrMissingSchemas{URIs: missingURIs}
 	}
 
 	return Registry{Schemas: schemas}, nil
@@ -34,6 +46,7 @@ func NewRegistry(schemaStructs []SchemaStruct) (Registry, error) {
 
 func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 	out := Schema{}
+	out.IsRoot = root
 
 	if s.ID != nil {
 		if !root {
@@ -46,6 +59,12 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 		}
 
 		out.ID = id
+	} else {
+		// A root schema may omit the "id" keyword. In such case, it is assigned a
+		// default ID.
+		if root {
+			out.ID = &url.URL{}
+		}
 	}
 
 	if s.Definitions != nil {
@@ -187,5 +206,33 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 		}
 	}
 
-	return Schema{}, nil
+	out.Extra = s.Extra
+	return out, nil
+}
+
+func populateSchemaRefs(missing *[]url.URL, registry map[url.URL]*Schema, base *url.URL, schema *Schema) {
+	if schema.Ref != nil {
+		uri := base.ResolveReference(schema.Ref)
+		frag := uri.Fragment
+		uri.Fragment = ""
+
+		if refSchema, ok := registry[*uri]; ok {
+			if frag == "" {
+				schema.RefSchema = refSchema
+			} else {
+				if def, ok := refSchema.Definitions[frag]; ok {
+					schema.RefSchema = def
+				} else {
+					uri.Fragment = frag
+					*missing = append(*missing, *uri)
+				}
+			}
+		} else {
+			*missing = append(*missing, *uri)
+		}
+	}
+
+	for _, subSchema := range schema.Definitions {
+		populateSchemaRefs(missing, registry, base, subSchema)
+	}
 }

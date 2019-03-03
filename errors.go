@@ -18,11 +18,3 @@ type ErrMissingSchemas struct {
 func (e ErrMissingSchemas) Error() string {
 	return fmt.Sprintf("missing schemas: %v", e.URIs)
 }
-
-type ErrNoSuchSchema struct {
-	URI url.URL
-}
-
-func (e ErrNoSuchSchema) Error() string {
-	return fmt.Sprintf("no such schema: %s", e.URI.String())
-}
