@@ -13,9 +13,9 @@ import (
 
 func TestSpec(t *testing.T) {
 	type testCase struct {
-		Name      string   `json:"name"`
-		Registry  []Schema `json:"registry"`
-		Schema    Schema   `json:"schema"`
+		Name      string         `json:"name"`
+		Registry  []SchemaStruct `json:"registry"`
+		Schema    SchemaStruct   `json:"schema"`
 		Instances []struct {
 			Instance interface{}       `json:"instance"`
 			Errors   []ValidationError `json:"errors"`
@@ -47,13 +47,14 @@ func TestSpec(t *testing.T) {
 			t.Run(path+"/"+tt.Name, func(t *testing.T) {
 				for i, instance := range tt.Instances {
 					t.Run(strconv.Itoa(i), func(t *testing.T) {
-						schemas := []Schema{}
+						schemas := []SchemaStruct{}
 						schemas = append(schemas, tt.Registry...)
 						schemas = append(schemas, tt.Schema)
 
-						validator, err := NewValidator(schemas)
+						registry, err := NewRegistry(schemas)
 						assert.NoError(t, err)
 
+						validator := Validator{Registry: registry}
 						result, err := validator.Validate(instance.Instance)
 						assert.NoError(t, err)
 

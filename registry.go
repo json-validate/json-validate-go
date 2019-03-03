@@ -33,8 +33,8 @@ func NewRegistry(schemaStructs []SchemaStruct) (Registry, error) {
 	// In a second pass, ensure that all references are valid, and compute their
 	// resolutions.
 	missingURIs := []url.URL{}
-	for id, schema := range schemas {
-		populateSchemaRefs(&missingURIs, schemas, &id, schema)
+	for _, schema := range schemas {
+		populateSchemaRefs(&missingURIs, schemas, schema.ID, schema)
 	}
 
 	if len(missingURIs) > 0 {
@@ -211,6 +211,8 @@ func parseSchemaStruct(root bool, s SchemaStruct) (Schema, error) {
 }
 
 func populateSchemaRefs(missing *[]url.URL, registry map[url.URL]*Schema, base *url.URL, schema *Schema) {
+	schema.Base = base
+
 	if schema.Ref != nil {
 		uri := base.ResolveReference(schema.Ref)
 		frag := uri.Fragment
@@ -233,6 +235,26 @@ func populateSchemaRefs(missing *[]url.URL, registry map[url.URL]*Schema, base *
 	}
 
 	for _, subSchema := range schema.Definitions {
+		populateSchemaRefs(missing, registry, base, subSchema)
+	}
+
+	if schema.Elements != nil {
+		populateSchemaRefs(missing, registry, base, schema.Elements)
+	}
+
+	for _, subSchema := range schema.Properties {
+		populateSchemaRefs(missing, registry, base, subSchema)
+	}
+
+	for _, subSchema := range schema.OptionalProperties {
+		populateSchemaRefs(missing, registry, base, subSchema)
+	}
+
+	if schema.Values != nil {
+		populateSchemaRefs(missing, registry, base, schema.Values)
+	}
+
+	for _, subSchema := range schema.DiscriminatorMapping {
 		populateSchemaRefs(missing, registry, base, subSchema)
 	}
 }

@@ -130,23 +130,102 @@ func (s SchemaStruct) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
+// Schema is an abstract representation of a JSON Validate schema.
+//
+// Whereas SchemaStruct is meant for marshaling/unmarshaling data, Schema is
+// meant for higher-level processing of schemas. If you intend to manipulate
+// schemas in order to perform code or UI generation, you should use Schema.
 type Schema struct {
-	ID                 *string            `json:"id"`
-	Ref                *string            `json:"ref"`
-	Definitions        map[string]*Schema `json:"definitions"`
-	Type               *string            `json:"type"`
-	Elements           *Schema            `json:"elements"`
-	Properties         map[string]*Schema `json:"properties"`
-	OptionalProperties map[string]*Schema `json:"optionalProperties"`
-	Values             *Schema            `json:"values"`
-	Discriminator      *Discriminator     `json:"discriminator"`
-	AnyOf              []*Schema          `json:"anyOf"`
+	// The base URI of the schema; this is the ID of the schema's root.
+	Base *url.URL
 
-	baseURI url.URL
-	refURI  url.URL
+	// Whether this schema is a root schema. Only root schemas may have nonzero ID
+	// or Definitions.
+	IsRoot bool
+
+	// The ID of the Schema. ID is meaningful iff IsRoot is true. The Fragment
+	// part is guaranteed to be empty.
+	ID *url.URL
+
+	// The definitions for this Schema. Definitions is meaningful iff IsRoot is
+	// true.
+	Definitions map[string]*Schema
+
+	// Indicates which keywords may be set on this schema.
+	Kind SchemaKind
+
+	// Meaningful iff Kind is SchemaKindRef.
+	Ref       *url.URL // the parsed URI that was referred to
+	RefSchema *Schema  // the schema the ref resolved to
+
+	// Meaningful iff Kind is SchemaKindType
+	Type SchemaType
+
+	// Meaningful iff Kind is SchemaKindElements
+	Elements *Schema
+
+	// Meaningful iff Kind is SchemaKindProperties
+	Properties         map[string]*Schema // required properties
+	OptionalProperties map[string]*Schema // optional properties
+
+	// Meaningful iff Kind is SchemaKindValues
+	Values *Schema
+
+	// Meaningful iff Kind is SchemaKindDiscriminator
+	DiscriminatorPropertyName string             // property to switch on
+	DiscriminatorMapping      map[string]*Schema // mapping from value to schema
+
+	// Extra stores data that's in a schema, but isn't part of the formal spec.
+	//
+	// If a schema contains non-formalized data like `title` or `description`,
+	// those data will be present in this field.
+	Extra map[string]interface{}
 }
 
-type Discriminator struct {
-	PropertyName string             `json:"propertyName"`
-	Mapping      map[string]*Schema `json:"mapping"`
-}
+// SchemaKind is an enum of possible types of schemas.
+//
+// Most JSON Validate keywords are mutually exclusive. This enum serves to
+// indicate which keywords amy possibly appear.
+type SchemaKind int
+
+const (
+	// SchemaKindEmpty indicates a schema without any keywords.
+	SchemaKindEmpty SchemaKind = iota
+
+	// SchemaKindRef indicates a schema with the "ref" keyword.
+	SchemaKindRef
+
+	// SchemaKindType indicates a schema with the "type" keyword.
+	SchemaKindType
+
+	// SchemaKindElements indicates a schema with the "elements" keyword.
+	SchemaKindElements
+
+	// SchemaKindProperties indicates a schema with the "properties" or
+	// "optionalProperties" keywords, or both.
+	SchemaKindProperties
+
+	// SchemaKindValues indicates a schema with the "values" keyword.
+	SchemaKindValues
+
+	// SchemaKindDiscriminator indidcates a schema with the "discriminator"
+	// keyword.
+	SchemaKindDiscriminator
+)
+
+// SchemaType indicates possible values of the "type" keyword.
+type SchemaType int
+
+const (
+	// SchemaTypeNull indicates the value "null".
+	SchemaTypeNull SchemaType = iota
+
+	// SchemaTypeBoolean indicates the value "boolean".
+	SchemaTypeBoolean
+
+	// SchemaTypeNumber indicates the value "number".
+	SchemaTypeNumber
+
+	// SchemaTypeString indicates the type "string".
+	SchemaTypeString
+)

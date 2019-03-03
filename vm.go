@@ -10,315 +10,100 @@ import (
 type vm struct {
 	maxErrors      int
 	maxDepth       int
-	registry       map[url.URL]*Schema
+	registry       Registry
 	instanceTokens []string
 	schemas        []schemaStack
 	errors         []ValidationError
 }
 
 type schemaStack struct {
-	uri    url.URL
+	uri    *url.URL
 	tokens []string
 }
 
 func (vm *vm) eval(schema *Schema, instance interface{}) error {
-	if schema.Ref != nil {
-		refSchema := vm.registry[schema.refURI]
+	if schema.RefSchema != nil {
 		tokens := []string{}
-
-		if schema.refURI.Fragment != "" {
-			tokens = []string{"definitions", schema.refURI.Fragment}
+		if schema.Ref.Fragment != "" {
+			tokens = []string{"definitions", schema.Ref.Fragment}
 		}
 
-		if err := vm.pushSchema(refSchema.baseURI, tokens); err != nil {
+		if err := vm.pushSchema(schema.RefSchema.Base, tokens); err != nil {
 			return err
 		}
 
-		if err := vm.eval(refSchema, instance); err != nil {
+		if err := vm.eval(schema.RefSchema, instance); err != nil {
 			return err
 		}
 
 		vm.popSchema()
 	}
 
-	checkElements := schema.Elements != nil
-	checkProperties := schema.Properties != nil
-	checkOptionalProperties := schema.OptionalProperties != nil
-	checkValues := schema.Values != nil
-	checkDiscriminator := schema.Discriminator != nil
+	switch schema.Kind {
+	case SchemaKindEmpty:
+		return nil
+	case SchemaKindType:
+		switch schema.Type {
+		case SchemaTypeNull:
+			if instance != nil {
+				vm.pushSchemaToken("type")
+				if err := vm.reportError(); err != nil {
+					return err
+				}
+				vm.popSchemaToken()
+			}
+		case SchemaTypeBoolean:
+			if _, ok := instance.(bool); !ok {
+				vm.pushSchemaToken("type")
+				if err := vm.reportError(); err != nil {
+					return err
+				}
+				vm.popSchemaToken()
+			}
+		case SchemaTypeNumber:
+			if _, ok := instance.(float64); !ok {
+				vm.pushSchemaToken("type")
+				if err := vm.reportError(); err != nil {
+					return err
+				}
+				vm.popSchemaToken()
+			}
+		case SchemaTypeString:
+			if _, ok := instance.(string); !ok {
+				vm.pushSchemaToken("type")
+				if err := vm.reportError(); err != nil {
+					return err
+				}
+				vm.popSchemaToken()
+			}
+		}
+	case SchemaKindElements:
+		vm.pushSchemaToken("elements")
 
-	switch instanceVal := instance.(type) {
-	case nil:
-		if schema.Type != nil && *schema.Type != "null" {
-			vm.pushSchemaToken("type")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkElements {
-			vm.pushSchemaToken("elements")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkProperties {
-			vm.pushSchemaToken("properties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkOptionalProperties {
-			vm.pushSchemaToken("optionalProperties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkValues {
-			vm.pushSchemaToken("values")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkDiscriminator {
-			vm.pushSchemaToken("discriminator")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-	case bool:
-		if schema.Type != nil && *schema.Type != "boolean" {
-			vm.pushSchemaToken("type")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkElements {
-			vm.pushSchemaToken("elements")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkProperties {
-			vm.pushSchemaToken("properties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkOptionalProperties {
-			vm.pushSchemaToken("optionalProperties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkValues {
-			vm.pushSchemaToken("values")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkDiscriminator {
-			vm.pushSchemaToken("discriminator")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-	case float64:
-		if schema.Type != nil && *schema.Type != "number" {
-			vm.pushSchemaToken("type")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkElements {
-			vm.pushSchemaToken("elements")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkProperties {
-			vm.pushSchemaToken("properties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkOptionalProperties {
-			vm.pushSchemaToken("optionalProperties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkValues {
-			vm.pushSchemaToken("values")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkDiscriminator {
-			vm.pushSchemaToken("discriminator")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-	case string:
-		if schema.Type != nil && *schema.Type != "string" {
-			vm.pushSchemaToken("type")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkElements {
-			vm.pushSchemaToken("elements")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkProperties {
-			vm.pushSchemaToken("properties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkOptionalProperties {
-			vm.pushSchemaToken("optionalProperties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkValues {
-			vm.pushSchemaToken("values")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkDiscriminator {
-			vm.pushSchemaToken("discriminator")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-	case []interface{}:
-		if schema.Type != nil {
-			vm.pushSchemaToken("type")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkProperties {
-			vm.pushSchemaToken("properties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkOptionalProperties {
-			vm.pushSchemaToken("optionalProperties")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkValues {
-			vm.pushSchemaToken("values")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkDiscriminator {
-			vm.pushSchemaToken("discriminator")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkElements {
-			vm.pushSchemaToken("elements")
-
-			for i, elem := range instanceVal {
+		if elems, ok := instance.([]interface{}); ok {
+			for i, elem := range elems {
 				vm.pushInstanceToken(strconv.Itoa(i))
 				if err := vm.eval(schema.Elements, elem); err != nil {
 					return err
 				}
 				vm.popInstanceToken()
 			}
-
-			vm.popSchemaToken()
-		}
-	case map[string]interface{}:
-		if schema.Type != nil {
-			vm.pushSchemaToken("type")
+		} else {
 			if err := vm.reportError(); err != nil {
 				return err
 			}
-			vm.popSchemaToken()
 		}
 
-		if checkElements {
-			vm.pushSchemaToken("elements")
-			if err := vm.reportError(); err != nil {
-				return err
-			}
-			vm.popSchemaToken()
-		}
-
-		if checkProperties {
+		vm.popSchemaToken()
+	case SchemaKindProperties:
+		if object, ok := instance.(map[string]interface{}); ok {
+			// First, required properties.
 			vm.pushSchemaToken("properties")
+			for property, subSchema := range schema.Properties {
+				vm.pushSchemaToken(property)
 
-			for key, subSchema := range schema.Properties {
-				vm.pushSchemaToken(key)
-
-				if value, ok := instanceVal[key]; ok {
-					vm.pushInstanceToken(key)
+				if value, ok := object[property]; ok {
+					vm.pushInstanceToken(property)
 					if err := vm.eval(subSchema, value); err != nil {
 						return err
 					}
@@ -331,18 +116,15 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 				vm.popSchemaToken()
 			}
-
 			vm.popSchemaToken()
-		}
 
-		if checkOptionalProperties {
+			// Then, optional properties.
 			vm.pushSchemaToken("optionalProperties")
+			for property, subSchema := range schema.OptionalProperties {
+				vm.pushSchemaToken(property)
 
-			for key, subSchema := range schema.OptionalProperties {
-				vm.pushSchemaToken(key)
-
-				if value, ok := instanceVal[key]; ok {
-					vm.pushInstanceToken(key)
+				if value, ok := object[property]; ok {
+					vm.pushInstanceToken(property)
 					if err := vm.eval(subSchema, value); err != nil {
 						return err
 					}
@@ -351,40 +133,63 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 
 				vm.popSchemaToken()
 			}
-
 			vm.popSchemaToken()
+
+		} else {
+			// Which errors we're gonna produce has to do with which keywords appeared
+			// in the schema.
+
+			if schema.Properties != nil {
+				vm.pushSchemaToken("properties")
+				if err := vm.reportError(); err != nil {
+					return err
+				}
+				vm.popSchemaToken()
+			}
+
+			if schema.OptionalProperties != nil {
+				vm.pushSchemaToken("optionalProperties")
+				if err := vm.reportError(); err != nil {
+					return err
+				}
+				vm.popSchemaToken()
+			}
 		}
+	case SchemaKindValues:
+		vm.pushSchemaToken("values")
 
-		if checkValues {
-			vm.pushSchemaToken("values")
-
-			for key, value := range instanceVal {
+		if object, ok := instance.(map[string]interface{}); ok {
+			for key, value := range object {
 				vm.pushInstanceToken(key)
 				if err := vm.eval(schema.Values, value); err != nil {
 					return err
 				}
 				vm.popInstanceToken()
 			}
-
-			vm.popSchemaToken()
+		} else {
+			if err := vm.reportError(); err != nil {
+				return err
+			}
 		}
 
-		if checkDiscriminator {
-			vm.pushSchemaToken("discriminator")
+		vm.popSchemaToken()
+	case SchemaKindDiscriminator:
+		vm.pushSchemaToken("discriminator")
 
-			if tag, ok := instanceVal[schema.Discriminator.PropertyName]; ok {
-				if tagStr, ok := tag.(string); ok {
-					if subSchema, ok := schema.Discriminator.Mapping[tagStr]; ok {
+		if object, ok := instance.(map[string]interface{}); ok {
+			if prop, ok := object[schema.DiscriminatorPropertyName]; ok {
+				if propStr, ok := prop.(string); ok {
+					if subSchema, ok := schema.DiscriminatorMapping[propStr]; ok {
 						vm.pushSchemaToken("mapping")
-						vm.pushSchemaToken(tagStr)
-						if err := vm.eval(subSchema, instanceVal); err != nil {
+						vm.pushSchemaToken(propStr)
+						if err := vm.eval(subSchema, instance); err != nil {
 							return err
 						}
 						vm.popSchemaToken()
 						vm.popSchemaToken()
 					} else {
 						vm.pushSchemaToken("mapping")
-						vm.pushInstanceToken(schema.Discriminator.PropertyName)
+						vm.pushInstanceToken(schema.DiscriminatorPropertyName)
 						if err := vm.reportError(); err != nil {
 							return err
 						}
@@ -393,7 +198,7 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 					}
 				} else {
 					vm.pushSchemaToken("propertyName")
-					vm.pushInstanceToken(schema.Discriminator.PropertyName)
+					vm.pushInstanceToken(schema.DiscriminatorPropertyName)
 					if err := vm.reportError(); err != nil {
 						return err
 					}
@@ -408,8 +213,13 @@ func (vm *vm) eval(schema *Schema, instance interface{}) error {
 				vm.popSchemaToken()
 			}
 
-			vm.popSchemaToken()
+		} else {
+			if err := vm.reportError(); err != nil {
+				return err
+			}
 		}
+
+		vm.popSchemaToken()
 	}
 
 	return nil
@@ -426,7 +236,7 @@ func (vm *vm) reportError() error {
 	vm.errors = append(vm.errors, ValidationError{
 		InstancePath: jsonpointer.Ptr{Tokens: instancePath},
 		SchemaPath:   jsonpointer.Ptr{Tokens: schemaPath},
-		SchemaURI:    schemaStack.uri,
+		SchemaURI:    *schemaStack.uri,
 	})
 
 	if len(vm.errors) == vm.maxErrors {
@@ -444,7 +254,7 @@ func (vm *vm) popInstanceToken() {
 	vm.instanceTokens = vm.instanceTokens[:len(vm.instanceTokens)-1]
 }
 
-func (vm *vm) pushSchema(uri url.URL, tokens []string) error {
+func (vm *vm) pushSchema(uri *url.URL, tokens []string) error {
 	if len(vm.schemas) == vm.maxDepth {
 		return ErrMaxDepth
 	}
