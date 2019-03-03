@@ -90,7 +90,7 @@ func main() {
 
 func run(schemaPaths []string, format outputFormat) error {
 	// parse each of the inputted paths into Schema structs
-	schemas := make([]jsonvalidate.Schema, len(schemaPaths))
+	schemas := make([]jsonvalidate.SchemaStruct, len(schemaPaths))
 	for i, schemaPath := range schemaPaths {
 		reader, err := os.Open(schemaPath)
 		if err != nil {
@@ -105,10 +105,12 @@ func run(schemaPaths []string, format outputFormat) error {
 	}
 
 	// construct a new validator from the given schemas
-	validator, err := jsonvalidate.NewValidator(schemas)
+	registry, err := jsonvalidate.NewRegistry(schemas)
 	if err != nil {
 		return err
 	}
+
+	validator := jsonvalidate.Validator{Registry: registry}
 
 	decoder := json.NewDecoder(os.Stdin)  // parses JSON from stdin
 	encoder := json.NewEncoder(os.Stdout) // outputs JSON to stdout (for json output format)
